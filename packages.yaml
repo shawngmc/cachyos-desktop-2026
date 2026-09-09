@@ -1,0 +1,96 @@
+# CLI tool wishlist for cli-software.sh
+brew:
+  monitoring:
+    - btop
+    - procs
+    # - nvtop
+    - iftop
+    - bottom
+
+  navigation:
+    - zoxide
+    - eza
+
+  data_analysis:
+    - ripgrep
+    - ripgrep-all
+    - ugrep
+    - yq
+    - jq
+    - fzf
+    - q
+
+  terminal_management:
+    - zellij
+    - tmux
+    - fastfetch
+    - starship
+    - asciinema
+    - atuin
+
+  disk_management:
+    - dust # sheet: du-dust
+    - diskonaut
+    - yazi
+    - dua-cli
+
+  viewers:
+    - bat
+
+  editor:
+    - neovim
+
+  web_apps:
+    - wego
+    - yt-dlp
+    - bitwarden-cli
+    - aerc
+
+  support:
+    - w3m
+
+  containers:
+    - kubernetes-cli
+    - k9s
+    - dive
+    - crane
+    - lazydocker
+
+  development:
+    - nvm
+    - uv
+    - git-flow-next
+    - ghq
+    - gh
+    - lazygit
+    - git-delta
+    - git-lfs
+    - shellcheck
+
+  networking:
+    - doggo
+    - mtr
+
+  cloud:
+    - awscli
+
+  ai:
+    - ollama
+
+  uncategorized:
+    - gpg-tui
+    - bandwhich
+    - dhex
+    - nushell
+    - tealdeer
+    - sevenzip
+    - ssh-audit
+    - hyperfine
+    - testssl
+    - imagemagick
+
+pacman:
+  - wl-clipboard
+
+pip:
+  - termvisage
