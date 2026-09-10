@@ -98,10 +98,17 @@ mapfile -t PIP_PKGS < <(yq -r '.pip[]' "$PACKAGES_YAML")
 # CachyOS's system Python is externally managed (PEP 668), so a plain
 # `pip install` is refused. Use pipx instead — it installs each package
 # into its own isolated venv and exposes its CLI entry points on PATH.
+#
+# python-pillow is pulled in explicitly and pipx is told to reuse system
+# site-packages: CachyOS tracks Python closely, so C-extension deps like
+# Pillow often lack prebuilt wheels for it yet and pip falls back to
+# compiling from source, which can fail against the system's newer
+# libwebp/etc. headers. Pacman's build is precompiled correctly, so
+# reusing it sidesteps that entirely.
 if [[ ${#PIP_PKGS[@]} -gt 0 ]]; then
-  sudo pacman -S --needed --noconfirm python-pipx
+  sudo pacman -S --needed --noconfirm python-pipx python-pillow
   for PKG in "${PIP_PKGS[@]}"; do
-    pipx install "$PKG"
+    pipx install --system-site-packages "$PKG"
   done
 fi
 
