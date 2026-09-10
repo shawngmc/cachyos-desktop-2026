@@ -93,4 +93,9 @@ pacman:
   - wl-clipboard
 
 pip:
-  - termvisage
+  - name: termvisage
+    # Pins Pillow<11, which predates any wheel for the current system
+    # Python and so must be built from source. That build fails under
+    # GCC 14's default-error -Wincompatible-pointer-types; this downgrades
+    # that one diagnostic back to a warning so the build can proceed.
+    cflags: "-Wno-error=incompatible-pointer-types"

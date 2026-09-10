@@ -71,12 +71,12 @@ $AUR_HELPER -S --needed --noconfirm tabby-bin
 # 6. Claude desktop
 # ---------------------------------------------------------------------
 #
-# Anthropic doesn't publish an official Linux build — this is a
-# community-maintained AUR package that repackages the Windows/Mac
-# Electron app for Linux. Review it before trusting it:
-#   https://aur.archlinux.org/packages/claude-desktop-bin
+# claude-desktop repackages Anthropic's official Linux .deb (announced
+# 2026-07). The old claude-desktop-bin (a community repack of the Mac/
+# Windows Electron app) has been deleted from the AUR in favor of this.
+# Review before trusting it: https://aur.archlinux.org/packages/claude-desktop
 
-$AUR_HELPER -S --needed --noconfirm claude-desktop-bin
+$AUR_HELPER -S --needed --noconfirm claude-desktop
 
 # ---------------------------------------------------------------------
 # 7. Bitwarden desktop

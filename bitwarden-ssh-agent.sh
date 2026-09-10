@@ -66,13 +66,28 @@ for RC in "$HOME/.bashrc" "$HOME/.zshrc"; do
   fi
 done
 
+# Fish doesn't source .bashrc/.zshrc and doesn't understand `export` —
+# it needs its own config file and `set -gx` syntax.
+if command -v fish >/dev/null 2>&1; then
+  FISH_RC="$HOME/.config/fish/config.fish"
+  mkdir -p "$(dirname "$FISH_RC")"
+  touch "$FISH_RC"
+  if ! grep -qF 'bitwarden-ssh-agent.sock' "$FISH_RC" 2>/dev/null; then
+    echo "set -gx SSH_AUTH_SOCK \"$SOCK\"" >>"$FISH_RC"
+    echo "Added SSH_AUTH_SOCK to $FISH_RC"
+  else
+    echo "$FISH_RC already wires up SSH_AUTH_SOCK — leaving it alone."
+  fi
+fi
+
 cat <<EOF
 >>> Done wiring the shell env. Next steps:
     1. In Bitwarden desktop: Settings > SSH agent > enable it.
     2. Keep Bitwarden desktop running (enable "start on login" / close
        to tray rather than quitting) so the socket stays alive for the
        whole session.
-    3. Open a new shell (or 'source ~/.bashrc'), then verify:
+    3. Open a new shell (or 'source ~/.bashrc' / '. ~/.config/fish/config.fish'),
+       then verify:
          ssh-add -l
        Each key use prompts a Bitwarden approval dialog the first time
        per session.

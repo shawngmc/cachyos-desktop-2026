@@ -90,7 +90,7 @@ brew install --quiet yq
 
 mapfile -t BREW_PKGS < <(yq -r '.brew[][]' "$PACKAGES_YAML")
 mapfile -t PACMAN_PKGS < <(yq -r '.pacman[]' "$PACKAGES_YAML")
-mapfile -t PIP_PKGS < <(yq -r '.pip[]' "$PACKAGES_YAML")
+mapfile -t PIP_PKGS < <(yq -r '.pip[].name' "$PACKAGES_YAML")
 
 [[ ${#BREW_PKGS[@]} -gt 0 ]] && brew install "${BREW_PKGS[@]}"
 [[ ${#PACMAN_PKGS[@]} -gt 0 ]] && sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
@@ -99,16 +99,20 @@ mapfile -t PIP_PKGS < <(yq -r '.pip[]' "$PACKAGES_YAML")
 # `pip install` is refused. Use pipx instead — it installs each package
 # into its own isolated venv and exposes its CLI entry points on PATH.
 #
-# python-pillow is pulled in explicitly and pipx is told to reuse system
-# site-packages: CachyOS tracks Python closely, so C-extension deps like
-# Pillow often lack prebuilt wheels for it yet and pip falls back to
-# compiling from source, which can fail against the system's newer
-# libwebp/etc. headers. Pacman's build is precompiled correctly, so
-# reusing it sidesteps that entirely.
+# A package entry in packages.yaml may carry an optional `cflags:` —
+# needed by packages (e.g. termvisage) that pin an old upper bound on a
+# C-extension dep like Pillow, predating any prebuilt wheel for the
+# current system Python and so forcing a source build. See the comment
+# next to termvisage's entry for why that build needs this.
 if [[ ${#PIP_PKGS[@]} -gt 0 ]]; then
-  sudo pacman -S --needed --noconfirm python-pipx python-pillow
+  sudo pacman -S --needed --noconfirm python-pipx
   for PKG in "${PIP_PKGS[@]}"; do
-    pipx install --system-site-packages "$PKG"
+    PKG_CFLAGS="$(PKG_NAME="$PKG" yq -r '.pip[] | select(.name == strenv(PKG_NAME)) | .cflags // ""' "$PACKAGES_YAML")"
+    if [[ -n "$PKG_CFLAGS" ]]; then
+      CFLAGS="$PKG_CFLAGS" pipx install "$PKG"
+    else
+      pipx install "$PKG"
+    fi
   done
 fi
 
