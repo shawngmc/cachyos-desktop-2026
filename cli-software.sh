@@ -11,6 +11,11 @@
 
 set -euo pipefail
 
+# Keep brew from stopping to ask for confirmation (e.g. the analytics
+# prompt on first run) — applies to the installer and every `brew`
+# command below, not just install.sh.
+export NONINTERACTIVE=1
+
 # ---------------------------------------------------------------------
 # 0. Preflight
 # ---------------------------------------------------------------------
@@ -38,7 +43,7 @@ sudo pacman -S --needed --noconfirm \
 if command -v brew >/dev/null 2>&1; then
   echo "Homebrew already installed: $(command -v brew)"
 else
-  NONINTERACTIVE=1 /bin/bash -c \
+  /bin/bash -c \
     "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
 
@@ -89,7 +94,16 @@ mapfile -t PIP_PKGS < <(yq -r '.pip[]' "$PACKAGES_YAML")
 
 [[ ${#BREW_PKGS[@]} -gt 0 ]] && brew install "${BREW_PKGS[@]}"
 [[ ${#PACMAN_PKGS[@]} -gt 0 ]] && sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
-[[ ${#PIP_PKGS[@]} -gt 0 ]] && pip install --user "${PIP_PKGS[@]}"
+
+# CachyOS's system Python is externally managed (PEP 668), so a plain
+# `pip install` is refused. Use pipx instead — it installs each package
+# into its own isolated venv and exposes its CLI entry points on PATH.
+if [[ ${#PIP_PKGS[@]} -gt 0 ]]; then
+  sudo pacman -S --needed --noconfirm python-pipx
+  for PKG in "${PIP_PKGS[@]}"; do
+    pipx install "$PKG"
+  done
+fi
 
 echo ""
 echo "=== Done. Open a new shell (or 'source ~/.bashrc') to pick up brew on PATH. ==="
