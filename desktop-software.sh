@@ -3,9 +3,9 @@
 # desktop-software.sh
 #
 # Desktop app installer for Shawn's desktop on CachyOS. Covers: Discord,
-# Claude desktop, Google Chrome, Firefox, VSCode, Tabby (terminal),
-# Bitwarden desktop, Warehouse + Flatseal (Flatpak manager and
-# permissions editor), Tor Browser, and Ungoogled Chromium.
+# Google Chrome, Firefox, VSCode, Tabby (terminal), Bitwarden desktop,
+# Warehouse + Flatseal (Flatpak manager and permissions editor), Tor
+# Browser, Ungoogled Chromium, and LocalSend.
 #
 # Review before running. Designed to be run section-by-section rather
 # than blindly executed — comment out anything you don't want.
@@ -68,18 +68,7 @@ $AUR_HELPER -S --needed --noconfirm visual-studio-code-bin
 $AUR_HELPER -S --needed --noconfirm tabby-bin
 
 # ---------------------------------------------------------------------
-# 6. Claude desktop
-# ---------------------------------------------------------------------
-#
-# claude-desktop repackages Anthropic's official Linux .deb (announced
-# 2026-07). The old claude-desktop-bin (a community repack of the Mac/
-# Windows Electron app) has been deleted from the AUR in favor of this.
-# Review before trusting it: https://aur.archlinux.org/packages/claude-desktop
-
-$AUR_HELPER -S --needed --noconfirm claude-desktop
-
-# ---------------------------------------------------------------------
-# 7. Bitwarden desktop
+# 6. Bitwarden desktop
 # ---------------------------------------------------------------------
 #
 # GUI vault app — complements the bitwarden-cli from packages.yaml.
@@ -87,7 +76,7 @@ $AUR_HELPER -S --needed --noconfirm claude-desktop
 $AUR_HELPER -S --needed --noconfirm bitwarden
 
 # ---------------------------------------------------------------------
-# 8. Warehouse (Flatpak manager)
+# 7. Warehouse (Flatpak manager)
 # ---------------------------------------------------------------------
 #
 # Distributed as a Flatpak itself. gaming-software.sh also installs
@@ -99,7 +88,7 @@ flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flat
 flatpak install -y --noninteractive flathub io.github.flattool.Warehouse
 
 # ---------------------------------------------------------------------
-# 8a. Flatseal (Flatpak permissions manager)
+# 7a. Flatseal (Flatpak permissions manager)
 # ---------------------------------------------------------------------
 #
 # Also a Flatpak itself — pairs with Warehouse above.
@@ -107,7 +96,7 @@ flatpak install -y --noninteractive flathub io.github.flattool.Warehouse
 flatpak install -y --noninteractive flathub com.github.tchx84.Flatseal
 
 # ---------------------------------------------------------------------
-# 9. Tor Browser
+# 8. Tor Browser
 # ---------------------------------------------------------------------
 #
 # torbrowser-launcher is the standard Arch packaging — it downloads,
@@ -117,10 +106,27 @@ flatpak install -y --noninteractive flathub com.github.tchx84.Flatseal
 $AUR_HELPER -S --needed --noconfirm torbrowser-launcher
 
 # ---------------------------------------------------------------------
-# 10. Ungoogled Chromium
+# 9. Ungoogled Chromium
 # ---------------------------------------------------------------------
 
 $AUR_HELPER -S --needed --noconfirm ungoogled-chromium-bin
+
+# ---------------------------------------------------------------------
+# 10. LocalSend
+# ---------------------------------------------------------------------
+#
+# Open-source AirDrop alternative for sending files over the local
+# network. Packaged in the CachyOS repo (currently trails the AUR
+# localsend-bin by a minor version — swap to that if you need newer).
+# Needs TCP/UDP 53317 open on the LAN to discover peers and receive.
+
+sudo pacman -S --needed --noconfirm localsend
+
+# ufw skips rules that already exist, so this is safe to re-run. Only
+# touched if ufw is installed and enabled; otherwise there's nothing to open.
+if command -v ufw >/dev/null 2>&1 && sudo ufw status | grep -q "^Status: active"; then
+  sudo ufw allow 53317 comment 'LocalSend'
+fi
 
 echo ""
 echo "=== Done. ==="
