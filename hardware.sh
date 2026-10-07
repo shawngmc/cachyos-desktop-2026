@@ -6,9 +6,10 @@
 # Covers: MSI X870E Tomahawk WIFI, Ryzen 7 9800X3D, RX 7900 XT, Corsair
 # HX1000i, Lian-Li GA II Lite 240, Samsung 990 Pro / WD SN850X, plus
 # peripherals (Stream Deck Plus, Keychron C3 Pro 8K, Razer Naga Trinity /
-# Tartarus Pro, SteelSeries Aerox 9, DualSense, Elgato 4K X, Canon
+# Tartarus Pro, DualSense, Elgato 4K X, Canon
 # MF642Cdw, ASUS BD-RW) and OS-wide input remapping for the Tartarus Pro
-# and Naga Trinity via Input Remapper.
+# and Naga Trinity via Input Remapper. The SteelSeries Aerox 9 (rivalcfg
+# settings, grid proxy, battery alerts) is set up by aerox-9-setup.sh.
 #
 # Review before running. Designed to be run section-by-section rather
 # than blindly executed — comment out anything you don't want.
@@ -74,56 +75,19 @@ sudo systemctl enable --now lactd.service
 # ArchWiki CoreCtrl page for the polkit rule to avoid that.
 
 # ---------------------------------------------------------------------
-# 3. AUR packages — Razer (Naga Trinity, Tartarus Pro) + SteelSeries
+# 3. AUR packages — Razer (Naga Trinity, Tartarus Pro)
 # ---------------------------------------------------------------------
 
 $AUR_HELPER -S --needed --noconfirm \
   openrazer-meta \
-  polychromatic \
-  rivalcfg
+  polychromatic
 
 # openrazer requires your user in the 'plugdev' group + a re-login
 sudo gpasswd -a "$USER" plugdev
 echo ">>> Log out/in (or reboot) for the plugdev group change to apply."
 
 # ---------------------------------------------------------------------
-# 3.1 SteelSeries Aerox 9 — DPI / polling rate / lighting preset (rivalcfg)
-# ---------------------------------------------------------------------
-#
-# rivalcfg has no persistent daemon — it pushes settings to the mouse's
-# onboard memory once, then exits. Most settings survive unplug/replug,
-# but some newer SteelSeries firmware (per rivalcfg's own docs) does NOT
-# retain color settings on-device, only the startup lighting *mode*. The
-# udev rule below re-applies the full preset automatically every time
-# the mouse is (re)connected, so it's correct either way.
-
-sudo tee /etc/udev/rules.d/71-aerox9-rivalcfg.rules >/dev/null <<'EOF'
-# SteelSeries Aerox 9 (wired) - reapply rivalcfg preset on connect
-ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="1038", ATTR{idProduct}=="185a", \
-  RUN+="/usr/local/bin/aerox9-preset.sh"
-EOF
-
-sudo tee /usr/local/bin/aerox9-preset.sh >/dev/null <<'EOF'
-#!/usr/bin/env bash
-# Adjust sensitivity/polling/colors to taste.
-/usr/bin/rivalcfg \
-  --sensitivity 400,800,1600,3200,6400 \
-  --polling-rate 1000 \
-  --top-color FF0000 \
-  --middle-color 00FF00 \
-  --bottom-color 0000FF \
-  --default-lighting rainbow
-EOF
-sudo chmod +x /usr/local/bin/aerox9-preset.sh
-
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-
-# Run once now (also confirms rivalcfg sees the device):
-sudo /usr/local/bin/aerox9-preset.sh || echo "Aerox 9 not connected — will apply on next plug-in."
-
-# ---------------------------------------------------------------------
-# 3.2 OpenRazer lighting profiles — Naga Trinity / Tartarus Pro (Polychromatic)
+# 3.1 OpenRazer lighting profiles — Naga Trinity / Tartarus Pro (Polychromatic)
 # ---------------------------------------------------------------------
 #
 # Polychromatic's GUI is the primary way to build/save lighting profiles

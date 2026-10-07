@@ -25,7 +25,12 @@ HWDB="/etc/udev/hwdb.d/90-aerox9.hwdb"
 HWDB_OFF="${HWDB}.disabled"
 PM_RULE="/etc/udev/rules.d/72-aerox9-no-autosuspend.rules"
 RIVAL_RULE="/etc/udev/rules.d/99-steelseries-rival.rules"
+# left by older hardware.sh runs; reapplied a rainbow preset on every wired connect
+OLD_PRESET_RULE="/etc/udev/rules.d/71-aerox9-rivalcfg.rules"
+OLD_PRESET_BIN="/usr/local/bin/aerox9-preset.sh"
 SLEEP_TIMER=0   # minutes idle before the mouse sleeps (0-20, 0 = never)
+SENSITIVITY="400,800,1600,3200,6400" # DPI presets (up to 5, 100-18000)
+POLLING_RATE=1000 # Hz (125, 250, 500, 1000)
 BATTERY_WARN=30 # notify when the battery drops below this percentage
 BATTERY_REMIND=30 # minutes between repeat notifications while still low
 BATT_BIN="/usr/local/bin/aerox9-battery-check"
@@ -95,6 +100,10 @@ pipx upgrade --global rivalcfg
 # every input device and lets input-remapper autoload presets onto the real
 # dongle before the proxy can grab it. Write the rules and trigger hidraw only.
 /usr/local/bin/rivalcfg --print-udev > "$RIVAL_RULE"
+if [[ -e "$OLD_PRESET_RULE" || -e "$OLD_PRESET_BIN" ]]; then
+    echo "==> Removing old hardware.sh preset ($OLD_PRESET_RULE, $OLD_PRESET_BIN)"
+    rm -f "$OLD_PRESET_RULE" "$OLD_PRESET_BIN"
+fi
 udevadm control --reload-rules
 udevadm trigger --subsystem-match=hidraw --action=change
 
@@ -104,11 +113,14 @@ udevadm settle
 /usr/local/bin/rivalcfg --sleep-timer "$SLEEP_TIMER" \
     || echo "    Mouse not reachable (off or asleep?); rerun: rivalcfg --sleep-timer $SLEEP_TIMER"
 
-# rivalcfg saves to the mouse's onboard memory, so this only needs to run once
-echo "==> Setting mouse to teal/green"
+# rivalcfg saves to the mouse's onboard memory, so this only needs to run once.
+# --default-lighting off keeps the startup rainbow from replacing the zone colors.
+RIVAL_ARGS=(--sensitivity "$SENSITIVITY" --polling-rate "$POLLING_RATE"
+    --z1 green --z2 teal --z3 green --default-lighting off)
+echo "==> Setting mouse DPI ($SENSITIVITY), polling ($POLLING_RATE Hz), teal/green lighting"
 udevadm settle
-/usr/local/bin/rivalcfg --z1 green --z2 teal --z3 green \
-    || echo "    Mouse not reachable (off or asleep?); rerun: /usr/local/bin/rivalcfg --z1 green --z2 teal --z3 green"
+/usr/local/bin/rivalcfg "${RIVAL_ARGS[@]}" \
+    || echo "    Mouse not reachable (off or asleep?); rerun: /usr/local/bin/rivalcfg ${RIVAL_ARGS[*]}"
 
 echo "==> Writing $BATT_BIN"
 cat > "$BATT_BIN" <<'SH'
