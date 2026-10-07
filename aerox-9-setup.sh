@@ -100,6 +100,12 @@ udevadm settle
 /usr/local/bin/rivalcfg --sleep-timer "$SLEEP_TIMER" \
     || echo "    Mouse not reachable (off or asleep?); rerun: rivalcfg --sleep-timer $SLEEP_TIMER"
 
+# rivalcfg saves to the mouse's onboard memory, so this only needs to run once
+echo "==> Setting mouse to teal/green"
+udevadm settle
+/usr/local/bin/rivalcfg --z1 green --z2 teal --z3 green\
+    || echo "    Mouse not reachable (off or asleep?); rerun: /usr/local/bin/rivalcfg --z1 green --z2 teal --z3 green
+
 echo "==> Writing $BATT_BIN"
 cat > "$BATT_BIN" <<'SH'
 #!/usr/bin/env bash
