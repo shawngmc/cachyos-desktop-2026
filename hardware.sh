@@ -5,10 +5,10 @@
 # Driver / support-software installer for Shawn's desktop on CachyOS.
 # Covers: MSI X870E Tomahawk WIFI, Ryzen 7 9800X3D, RX 7900 XT, Corsair
 # HX1000i, Lian-Li GA II Lite 240, Samsung 990 Pro / WD SN850X, plus
-# peripherals (Stream Deck Plus, DualSense, Elgato 4K X, Canon MF642Cdw,
-# ASUS BD-RW) and OS-wide input remapping via Input Remapper. Section 5
-# runs the per-device scripts in devices/ for the Keychron C3 Pro 8K,
-# Razer Tartarus Pro and SteelSeries Aerox 9.
+# peripherals (DualSense, Canon MF642Cdw, ASUS BD-RW) and OS-wide input
+# remapping via Input Remapper. Section 4 runs the per-device scripts in
+# devices/ for the Keychron C3 Pro 8K, Razer Tartarus Pro, SteelSeries
+# Aerox 9, Elgato Stream Deck Plus and Elgato 4K X.
 #
 # Review before running. Designed to be run section-by-section rather
 # than blindly executed — comment out anything you don't want.
@@ -76,13 +76,7 @@ sudo systemctl enable --now lactd.service
 # ArchWiki CoreCtrl page for the polkit rule to avoid that.
 
 # ---------------------------------------------------------------------
-# 3. AUR packages — Stream Deck Plus
-# ---------------------------------------------------------------------
-
-$AUR_HELPER -S --needed --noconfirm streamcontroller
-
-# ---------------------------------------------------------------------
-# 4. OS-wide input remapping — Input Remapper (Tartarus Pro, Aerox 9)
+# 3. OS-wide input remapping — Input Remapper (Tartarus Pro, Aerox 9)
 # ---------------------------------------------------------------------
 #
 # input-remapper runs as a systemd service (root-level daemon reading
@@ -98,7 +92,7 @@ sudo systemctl enable --now input-remapper.service
 cat <<'EOF'
 >>> Input Remapper installed.
     Launch the GUI with: input-remapper-gtk
-    The device scripts in section 5 create the "Tartarus Pro Proxy"
+    The device scripts in section 4 create the "Tartarus Pro Proxy"
     and "Aerox9 Grid Proxy" devices.
     Steps for each device:
       1. Select the proxy device from the device dropdown (not the
@@ -113,58 +107,25 @@ cat <<'EOF'
 EOF
 
 # ---------------------------------------------------------------------
-# 5. Per-device setup (devices/)
+# 4. Per-device setup (devices/)
 # ---------------------------------------------------------------------
 #
 # Each script can also be rerun on its own; see its header for options.
-# The proxy scripts restart input-remapper, so they run after section 4.
+# The proxy scripts restart input-remapper, so they run after section 3.
 # A failure (e.g. device unplugged) is reported but doesn't stop this
-# script. The Aerox/Tartarus scripts sudo themselves; the Keychron one
-# runs as you, since the desktop session already owns its hidraw nodes.
+# script. The Aerox/Tartarus scripts sudo themselves; the others run as
+# you (AUR/cargo builds, the Keychron's session-owned hidraw nodes) and
+# sudo only where needed.
 
-for dev_script in keychron-c3-setup.sh tartarus-pro-setup.sh aerox-9-setup.sh; do
+for dev_script in keychron-c3-setup.sh tartarus-pro-setup.sh aerox-9-setup.sh \
+                  elgato-stream-deck-setup.sh elgato-4k-x-setup.sh; do
   echo ">>> Running devices/$dev_script"
   "$SCRIPT_DIR/devices/$dev_script" \
     || echo ">>> devices/$dev_script failed (exit $?); rerun it once the device is connected."
 done
 
 # ---------------------------------------------------------------------
-# 6. Elgato Stream Deck / capture card udev rules
-# ---------------------------------------------------------------------
-
-sudo tee /etc/udev/rules.d/70-streamdeck.rules >/dev/null <<'EOF'
-# Elgato Stream Deck devices - allow non-root access
-SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", MODE="0666"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0fd9", MODE="0666"
-EOF
-
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-
-# ---------------------------------------------------------------------
-# 7. Elgato 4K X capture card (community CLI, build from source)
-# ---------------------------------------------------------------------
-
-cat <<'EOF'
->>> Elgato 4K X has no official Linux driver. Community project:
-    https://github.com/13bm/elgato4k-linux
-
-    Build steps:
-      sudo pacman -S --needed base-devel libusb rust
-      git clone https://github.com/13bm/elgato4k-linux.git
-      cd elgato4k-linux
-      cargo build --release
-      sudo cp target/release/elgato4k-linux /usr/local/bin/
-
-    If the card isn't detected in 10Gbps mode, force 5Gbps mode with
-    the tool's --usb-speed flag, or add the USB_QUIRK_NO_BOS kernel
-    quirk as a GRUB_CMDLINE_LINUX boot parameter (see the repo README).
-    Once recognized it appears as a normal /dev/video* (V4L2) + ALSA
-    device usable directly in OBS Studio.
-EOF
-
-# ---------------------------------------------------------------------
-# 8. Sound BlasterX G6 (community CLI, pip install)
+# 5. Sound BlasterX G6 (community CLI, pip install)
 # ---------------------------------------------------------------------
 
 cat <<'EOF'
@@ -177,7 +138,7 @@ cat <<'EOF'
 EOF
 
 # ---------------------------------------------------------------------
-# 9. Canon imageCLASS MF642Cdw (official Linux driver, manual download)
+# 6. Canon imageCLASS MF642Cdw (official Linux driver, manual download)
 # ---------------------------------------------------------------------
 
 cat <<'EOF'

@@ -25,7 +25,7 @@ BIN="/usr/local/bin/kvm-switch"
 # ---------------------------------------------------------------------
 #
 # ddcutil is also in hardware.sh; --needed makes a repeat a no-op.
-# streamcontroller (AUR) comes from hardware.sh section 3.
+# streamcontroller (AUR) comes from devices/elgato-stream-deck-setup.sh.
 
 sudo pacman -S --needed --noconfirm ddcutil jq curl libnotify
 
