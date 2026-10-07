@@ -5,10 +5,9 @@
 # Driver / support-software installer for Shawn's desktop on CachyOS.
 # Covers: MSI X870E Tomahawk WIFI, Ryzen 7 9800X3D, RX 7900 XT, Corsair
 # HX1000i, Lian-Li GA II Lite 240, Samsung 990 Pro / WD SN850X, plus
-# peripherals (DualSense, Canon MF642Cdw, ASUS BD-RW) and OS-wide input
-# remapping via Input Remapper. Section 4 runs the per-device scripts in
-# devices/ for the Keychron C3 Pro 8K, Razer Tartarus Pro, SteelSeries
-# Aerox 9, Elgato Stream Deck Plus and Elgato 4K X.
+# peripherals (DualSense, ASUS BD-RW) and OS-wide input remapping via
+# Input Remapper. Section 4 runs the per-device scripts in devices/
+# (one per peripheral; see each script's header).
 #
 # Review before running. Designed to be run section-by-section rather
 # than blindly executed — comment out anything you don't want.
@@ -131,38 +130,6 @@ for dev_script in "$SCRIPT_DIR"/devices/*.sh; do
   "$dev_script" \
     || echo ">>> $name failed (exit $?); rerun it once the device is connected."
 done
-
-# ---------------------------------------------------------------------
-# 5. Sound BlasterX G6 (community CLI, pip install)
-# ---------------------------------------------------------------------
-
-cat <<'EOF'
->>> Sound BlasterX G6 works as a plain USB audio device with no
-    package needed for sound. For LED/HID control, install the
-    community CLI:
-      pip install --user soundblaster-x-g6-cli
-    (No official Creative Linux driver exists; BlasterX Acoustic
-    Engine EQ/RGB features are Windows-only otherwise.)
-EOF
-
-# ---------------------------------------------------------------------
-# 6. Canon imageCLASS MF642Cdw (official Linux driver, manual download)
-# ---------------------------------------------------------------------
-
-cat <<'EOF'
->>> Canon provides an official "UFR II/UFRII LT Printer Driver for
-    Linux" package that explicitly lists the MF642Cdw as supported.
-    Download from Canon's support site (search "imageCLASS MF642Cdw
-    Linux driver"), then:
-      tar xf linux-UFRII*.tar.gz
-      cd linux-UFRII*/
-      sudo ./install.sh
-    It installs as a CUPS backend — after install, add the printer via
-    system-config-printer (already installed in step 1) or the CUPS
-    web UI (http://localhost:631). Since it's networked via Ethernet,
-    use the IPP/socket queue with its LAN IP or add it via mDNS/Bonjour
-    discovery if avahi is running.
-EOF
 
 echo ""
 echo "=== Done. Reboot recommended before testing input-remapper. ==="
