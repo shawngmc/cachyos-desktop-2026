@@ -5,11 +5,11 @@
 # Driver / support-software installer for Shawn's desktop on CachyOS.
 # Covers: MSI X870E Tomahawk WIFI, Ryzen 7 9800X3D, RX 7900 XT, Corsair
 # HX1000i, Lian-Li GA II Lite 240, Samsung 990 Pro / WD SN850X, plus
-# peripherals (Stream Deck Plus, Keychron C3 Pro 8K, Razer Naga Trinity /
-# Tartarus Pro, DualSense, Elgato 4K X, Canon
-# MF642Cdw, ASUS BD-RW) and OS-wide input remapping for the Tartarus Pro
-# and Naga Trinity via Input Remapper. The SteelSeries Aerox 9 (rivalcfg
-# settings, grid proxy, battery alerts) is set up by aerox-9-setup.sh.
+# peripherals (Stream Deck Plus, Keychron C3 Pro 8K, Razer Tartarus Pro,
+# DualSense, Elgato 4K X, Canon MF642Cdw, ASUS BD-RW) and OS-wide input
+# remapping for the Tartarus Pro via Input Remapper. The SteelSeries
+# Aerox 9 (rivalcfg settings, grid proxy, battery alerts) is set up by
+# aerox-9-setup.sh.
 #
 # Review before running. Designed to be run section-by-section rather
 # than blindly executed — comment out anything you don't want.
@@ -75,7 +75,7 @@ sudo systemctl enable --now lactd.service
 # ArchWiki CoreCtrl page for the polkit rule to avoid that.
 
 # ---------------------------------------------------------------------
-# 3. AUR packages — Razer (Naga Trinity, Tartarus Pro)
+# 3. AUR packages — Razer (Tartarus Pro)
 # ---------------------------------------------------------------------
 
 $AUR_HELPER -S --needed --noconfirm \
@@ -87,7 +87,7 @@ sudo gpasswd -a "$USER" plugdev
 echo ">>> Log out/in (or reboot) for the plugdev group change to apply."
 
 # ---------------------------------------------------------------------
-# 3.1 OpenRazer lighting profiles — Naga Trinity / Tartarus Pro (Polychromatic)
+# 3.1 OpenRazer lighting profiles — Tartarus Pro (Polychromatic)
 # ---------------------------------------------------------------------
 #
 # Polychromatic's GUI is the primary way to build/save lighting profiles
@@ -100,8 +100,8 @@ echo ">>> Log out/in (or reboot) for the plugdev group change to apply."
 
 cat <<'EOF'
 >>> OpenRazer + Polychromatic installed.
-    Launch the GUI once first to let it detect the Naga Trinity and
-    Tartarus Pro, then build/save lighting profiles there.
+    Launch the GUI once first to let it detect the Tartarus Pro,
+    then build/save lighting profiles there.
 
     Optional scripted examples (polychromatic-cli, deprecated but
     functional) to set a static color + brightness on all Razer
@@ -111,8 +111,7 @@ cat <<'EOF'
 
     Note: OpenRazer intentionally does NOT handle button remapping —
     upstream explicitly points users to Input Remapper (section 5
-    below) for mapping the Tartarus Pro's keys or the Naga Trinity's
-    extra mouse buttons to actions/macros.
+    below) for mapping the Tartarus Pro's keys to actions/macros.
 EOF
 
 # ---------------------------------------------------------------------
@@ -122,7 +121,7 @@ EOF
 $AUR_HELPER -S --needed --noconfirm streamcontroller
 
 # ---------------------------------------------------------------------
-# 5. OS-wide input remapping — Input Remapper (Tartarus Pro + Naga Trinity)
+# 5. OS-wide input remapping — Input Remapper (Tartarus Pro)
 # ---------------------------------------------------------------------
 #
 # input-remapper runs as a systemd service (root-level daemon reading
@@ -139,11 +138,10 @@ cat <<'EOF'
 >>> Input Remapper installed.
     Launch the GUI with: input-remapper-gtk
     Steps for each device:
-      1. Select the Razer Tartarus Pro (or Naga Trinity) from the
-         device dropdown — it will likely show up as multiple
-         sub-devices (keyboard + mouse HID interfaces); pick the one
-         that reports the extra button events (use `sudo evtest` to
-         identify it if unsure).
+      1. Select the Razer Tartarus Pro from the device dropdown — it
+         will likely show up as multiple sub-devices (keyboard + mouse
+         HID interfaces); pick the one that reports the extra button
+         events (use `sudo evtest` to identify it if unsure).
       2. Create a new preset, map each physical button/key to the
          target key/macro.
       3. Enable "autoload" for that device so the preset applies on
