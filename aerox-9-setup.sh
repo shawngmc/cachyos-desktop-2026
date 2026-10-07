@@ -31,6 +31,9 @@ BATTERY_REMIND=30 # minutes between repeat notifications while still low
 BATT_BIN="/usr/local/bin/aerox9-battery-check"
 BATT_UNIT="/etc/systemd/user/aerox9-battery.service"
 BATT_TIMER="/etc/systemd/user/aerox9-battery.timer"
+# shell alias file for the invoking user (their ~/.bashrc sources ~/.bashrc.d/*.sh)
+USER_HOME=$(getent passwd "${SUDO_USER:-root}" | cut -d: -f6)
+ALIAS_FILE="$USER_HOME/.bashrc.d/30_aerox.sh"
 
 # run systemctl --user against the invoking user's session, if they have one
 user_systemctl() {
@@ -57,6 +60,7 @@ if [[ "${1:-}" == "--uninstall" ]]; then
     systemctl --global disable aerox9-battery.timer 2>/dev/null || true
     rm -f "$BATT_TIMER" "$BATT_UNIT" "$BATT_BIN"
     user_systemctl daemon-reload
+    rm -f "$ALIAS_FILE"
     if pipx list --global --short 2>/dev/null | grep -q '^rivalcfg '; then
         pipx uninstall --global rivalcfg
         rm -f "$RIVAL_RULE"
@@ -103,8 +107,8 @@ udevadm settle
 # rivalcfg saves to the mouse's onboard memory, so this only needs to run once
 echo "==> Setting mouse to teal/green"
 udevadm settle
-/usr/local/bin/rivalcfg --z1 green --z2 teal --z3 green\
-    || echo "    Mouse not reachable (off or asleep?); rerun: /usr/local/bin/rivalcfg --z1 green --z2 teal --z3 green
+/usr/local/bin/rivalcfg --z1 green --z2 teal --z3 green \
+    || echo "    Mouse not reachable (off or asleep?); rerun: /usr/local/bin/rivalcfg --z1 green --z2 teal --z3 green"
 
 echo "==> Writing $BATT_BIN"
 cat > "$BATT_BIN" <<'SH'
@@ -285,6 +289,15 @@ systemctl --global enable aerox9-battery.timer
 user_systemctl daemon-reload
 user_systemctl restart aerox9-battery.timer
 
+if [[ -n "${SUDO_USER:-}" ]]; then
+    echo "==> Writing $ALIAS_FILE"
+    install -d -m 700 -o "$SUDO_USER" -g "$(id -gn "$SUDO_USER")" "$USER_HOME/.bashrc.d"
+    cat > "$ALIAS_FILE" <<'SH'
+alias aerox-battery='rivalcfg --battery-level'
+SH
+    chown "$SUDO_USER:" "$ALIAS_FILE"
+fi
+
 if systemctl list-unit-files input-remapper.service &>/dev/null; then
     echo "==> Restarting input-remapper"
     systemctl restart input-remapper.service || true
@@ -297,7 +310,7 @@ echo
 echo "Check autosuspend is off (expect 'on'):"
 echo "  grep -l 1038 /sys/bus/usb/devices/*/idVendor | xargs -n1 dirname | xargs -I{} cat {}/power/control"
 echo "Check rivalcfg can reach the mouse:"
-echo "  rivalcfg --battery-level"
+echo "  aerox-battery    (alias for rivalcfg --battery-level; open a new shell first)"
 echo "Test the low-battery notification (fires if below 101%):"
 echo "  rm -f \$XDG_RUNTIME_DIR/aerox9-battery-low; $BATT_BIN 101"
 echo "Check that the proxy device exists:"
