@@ -5,11 +5,10 @@
 # Driver / support-software installer for Shawn's desktop on CachyOS.
 # Covers: MSI X870E Tomahawk WIFI, Ryzen 7 9800X3D, RX 7900 XT, Corsair
 # HX1000i, Lian-Li GA II Lite 240, Samsung 990 Pro / WD SN850X, plus
-# peripherals (Stream Deck Plus, Keychron C3 Pro 8K, DualSense, Elgato
-# 4K X, Canon MF642Cdw, ASUS BD-RW) and OS-wide input remapping via Input
-# Remapper. The Razer Tartarus Pro (OpenRazer, Polychromatic, proxy) and
-# SteelSeries Aerox 9 (rivalcfg settings, grid proxy, battery alerts) are
-# set up by tartarus-pro-setup.sh and aerox-9-setup.sh.
+# peripherals (Stream Deck Plus, DualSense, Elgato 4K X, Canon MF642Cdw,
+# ASUS BD-RW) and OS-wide input remapping via Input Remapper. Section 5
+# runs the per-device scripts in devices/ for the Keychron C3 Pro 8K,
+# Razer Tartarus Pro and SteelSeries Aerox 9.
 #
 # Review before running. Designed to be run section-by-section rather
 # than blindly executed — comment out anything you don't want.
@@ -17,6 +16,8 @@
 # Usage: chmod +x desktop-cachyos-setup.sh && ./desktop-cachyos-setup.sh
 
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ---------------------------------------------------------------------
 # 0. Preflight
@@ -97,8 +98,8 @@ sudo systemctl enable --now input-remapper.service
 cat <<'EOF'
 >>> Input Remapper installed.
     Launch the GUI with: input-remapper-gtk
-    Run tartarus-pro-setup.sh and aerox-9-setup.sh first; they create
-    the "Tartarus Pro Proxy" and "Aerox9 Grid Proxy" devices.
+    The device scripts in section 5 create the "Tartarus Pro Proxy"
+    and "Aerox9 Grid Proxy" devices.
     Steps for each device:
       1. Select the proxy device from the device dropdown (not the
          real Razer/SteelSeries device, which the proxy grabs).
@@ -112,7 +113,23 @@ cat <<'EOF'
 EOF
 
 # ---------------------------------------------------------------------
-# 5. Elgato Stream Deck / capture card udev rules
+# 5. Per-device setup (devices/)
+# ---------------------------------------------------------------------
+#
+# Each script can also be rerun on its own; see its header for options.
+# The proxy scripts restart input-remapper, so they run after section 4.
+# A failure (e.g. device unplugged) is reported but doesn't stop this
+# script. The Aerox/Tartarus scripts sudo themselves; the Keychron one
+# runs as you, since the desktop session already owns its hidraw nodes.
+
+for dev_script in keychron-c3-setup.sh tartarus-pro-setup.sh aerox-9-setup.sh; do
+  echo ">>> Running devices/$dev_script"
+  "$SCRIPT_DIR/devices/$dev_script" \
+    || echo ">>> devices/$dev_script failed (exit $?); rerun it once the device is connected."
+done
+
+# ---------------------------------------------------------------------
+# 6. Elgato Stream Deck / capture card udev rules
 # ---------------------------------------------------------------------
 
 sudo tee /etc/udev/rules.d/70-streamdeck.rules >/dev/null <<'EOF'
@@ -125,7 +142,7 @@ sudo udevadm control --reload-rules
 sudo udevadm trigger
 
 # ---------------------------------------------------------------------
-# 6. Elgato 4K X capture card (community CLI, build from source)
+# 7. Elgato 4K X capture card (community CLI, build from source)
 # ---------------------------------------------------------------------
 
 cat <<'EOF'
@@ -147,7 +164,7 @@ cat <<'EOF'
 EOF
 
 # ---------------------------------------------------------------------
-# 7. Sound BlasterX G6 (community CLI, pip install)
+# 8. Sound BlasterX G6 (community CLI, pip install)
 # ---------------------------------------------------------------------
 
 cat <<'EOF'
@@ -160,7 +177,7 @@ cat <<'EOF'
 EOF
 
 # ---------------------------------------------------------------------
-# 8. Canon imageCLASS MF642Cdw (official Linux driver, manual download)
+# 9. Canon imageCLASS MF642Cdw (official Linux driver, manual download)
 # ---------------------------------------------------------------------
 
 cat <<'EOF'

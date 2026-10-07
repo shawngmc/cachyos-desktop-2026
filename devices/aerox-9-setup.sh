@@ -10,9 +10,9 @@
 # sends a desktop notification when the mouse battery runs low.
 #
 # Usage:
-#   ./aerox9-proxy-setup.sh              install, and disable the old hwdb remap
-#   ./aerox9-proxy-setup.sh --keep-hwdb  install, leave the hwdb remap in place
-#   ./aerox9-proxy-setup.sh --uninstall  remove the proxy, restore the hwdb file
+#   ./aerox-9-setup.sh              install, and disable the old hwdb remap
+#   ./aerox-9-setup.sh --keep-hwdb  install, leave the hwdb remap in place
+#   ./aerox-9-setup.sh --uninstall  remove the proxy, restore the hwdb file
 set -euo pipefail
 
 if [[ $EUID -ne 0 ]]; then
