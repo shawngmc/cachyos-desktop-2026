@@ -19,6 +19,12 @@ BIN="/usr/local/bin/aerox9-proxy"
 UNIT="/etc/systemd/system/aerox9-proxy.service"
 HWDB="/etc/udev/hwdb.d/90-aerox9.hwdb"
 HWDB_OFF="${HWDB}.disabled"
+PM_RULE="/etc/udev/rules.d/72-aerox9-no-autosuspend.rules"
+
+reload_usb_pm() {
+    udevadm control --reload-rules
+    udevadm trigger --subsystem-match=usb --attr-match=idVendor=1038 --action=change
+}
 
 reload_hwdb() {
     systemd-hwdb update
@@ -30,6 +36,11 @@ if [[ "${1:-}" == "--uninstall" ]]; then
     systemctl disable --now aerox9-proxy.service 2>/dev/null || true
     rm -f "$UNIT" "$BIN"
     systemctl daemon-reload
+    if [[ -f "$PM_RULE" ]]; then
+        rm -f "$PM_RULE"
+        udevadm control --reload-rules
+        echo "Removed $PM_RULE (autosuspend returns to default on replug)"
+    fi
     if [[ -f "$HWDB_OFF" ]]; then
         mv "$HWDB_OFF" "$HWDB"
         reload_hwdb
@@ -132,6 +143,14 @@ RestartSec=2
 WantedBy=multi-user.target
 UNIT
 
+echo "==> Writing $PM_RULE"
+cat > "$PM_RULE" <<'RULES'
+# SteelSeries Aerox 9 - keep USB autosuspend off (1874 = wireless dongle, 185a = wired)
+ACTION=="add|change", SUBSYSTEM=="usb", ATTR{idVendor}=="1038", ATTR{idProduct}=="1874|185a", \
+  TEST=="power/control", ATTR{power/control}="on"
+RULES
+reload_usb_pm
+
 if [[ $KEEP_HWDB -eq 0 && -f "$HWDB" ]]; then
     echo "==> Disabling old hwdb remap ($HWDB -> $HWDB_OFF)"
     mv "$HWDB" "$HWDB_OFF"
@@ -152,6 +171,8 @@ sleep 1
 echo
 systemctl --no-pager --lines=5 status aerox9-proxy.service || true
 echo
+echo "Check autosuspend is off (expect 'on'):"
+echo "  grep -l 1038 /sys/bus/usb/devices/*/idVendor | xargs -n1 dirname | xargs -I{} cat {}/power/control"
 echo "Check that the proxy device exists:"
 echo "  grep -A4 'Aerox9 Grid Proxy' /proc/bus/input/devices"
 echo "Then open input-remapper, select 'Aerox9 Grid Proxy', and re-record your mappings."
