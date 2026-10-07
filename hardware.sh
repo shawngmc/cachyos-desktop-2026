@@ -110,18 +110,26 @@ EOF
 # 4. Per-device setup (devices/)
 # ---------------------------------------------------------------------
 #
-# Each script can also be rerun on its own; see its header for options.
-# The proxy scripts restart input-remapper, so they run after section 3.
-# A failure (e.g. device unplugged) is reported but doesn't stop this
-# script. The Aerox/Tartarus scripts sudo themselves; the others run as
-# you (AUR/cargo builds, the Keychron's session-owned hidraw nodes) and
-# sudo only where needed.
+# Runs every executable devices/*.sh in byte order (rc.d style: prefix a
+# name with a number, e.g. 10-foo.sh, to control ordering; chmod -x a
+# script to skip it). Each script can also be rerun on its own; see its
+# header for options. The proxy scripts restart input-remapper, so they
+# run after section 3. A failure (e.g. device unplugged) is reported but
+# doesn't stop this script. The Aerox/Tartarus scripts sudo themselves;
+# the others run as you (AUR/cargo builds, the Keychron's session-owned
+# hidraw nodes) and sudo only where needed.
 
-for dev_script in keychron-c3-setup.sh tartarus-pro-setup.sh aerox-9-setup.sh \
-                  elgato-stream-deck-setup.sh elgato-4k-x-setup.sh; do
-  echo ">>> Running devices/$dev_script"
-  "$SCRIPT_DIR/devices/$dev_script" \
-    || echo ">>> devices/$dev_script failed (exit $?); rerun it once the device is connected."
+LC_COLLATE=C   # plain byte order for the glob, regardless of locale
+for dev_script in "$SCRIPT_DIR"/devices/*.sh; do
+  name="devices/${dev_script##*/}"
+  [[ -e "$dev_script" ]] || continue   # no matches
+  if [[ ! -x "$dev_script" ]]; then
+    echo ">>> Skipping $name (not executable)"
+    continue
+  fi
+  echo ">>> Running $name"
+  "$dev_script" \
+    || echo ">>> $name failed (exit $?); rerun it once the device is connected."
 done
 
 # ---------------------------------------------------------------------
