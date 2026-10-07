@@ -113,6 +113,9 @@ state="${XDG_RUNTIME_DIR:-/tmp}/aerox9-battery-low"
 out=$(/usr/local/bin/rivalcfg --battery-level 2>/dev/null) || exit 0
 [[ $out =~ ([0-9]+)\ % ]] || exit 0   # mouse off or asleep
 level=${BASH_REMATCH[1]}
+# TODO: suppress alerts while the mouse is charging. rivalcfg doesn't report the
+# change: it still says "Discharging" with the cable plugged in, so the Charging*
+# check below never matches.
 if [[ $out == Charging* || $level -ge $threshold ]]; then
     rm -f "$state"
 elif [[ ! -e $state ]]; then
