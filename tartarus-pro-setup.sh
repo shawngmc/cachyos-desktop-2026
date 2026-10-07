@@ -6,9 +6,12 @@
 # one uinput device named "Tartarus Pro Proxy", so input-remapper sees a single
 # device with its own name/hash and can grab it.
 #
+# Also installs OpenRazer + Polychromatic (lighting) from the AUR and adds the
+# invoking user to the 'plugdev' group they require.
+#
 # Usage:
 #   ./tartarus-pro-setup.sh              install
-#   ./tartarus-pro-setup.sh --uninstall  remove the proxy
+#   ./tartarus-pro-setup.sh --uninstall  remove the proxy (OpenRazer stays)
 set -euo pipefail
 
 if [[ $EUID -ne 0 ]]; then
@@ -28,6 +31,24 @@ fi
 
 echo "==> Installing python-evdev"
 pacman -S --needed --noconfirm python-evdev
+
+# AUR helpers refuse to run as root, so build as the user who ran the script
+if [[ -z "${SUDO_USER:-}" ]]; then
+    echo "Run this as your normal user (it re-execs with sudo) so AUR packages can build." >&2
+    exit 1
+fi
+AUR_HELPER=$(command -v paru || command -v yay || true)
+if [[ -z "$AUR_HELPER" ]]; then
+    echo "No AUR helper (yay/paru) found; install one first." >&2
+    exit 1
+fi
+
+echo "==> Installing OpenRazer + Polychromatic (AUR, as $SUDO_USER)"
+sudo -u "$SUDO_USER" "$AUR_HELPER" -S --needed --noconfirm openrazer-meta polychromatic
+
+# openrazer requires the user in 'plugdev' + a re-login
+echo "==> Adding $SUDO_USER to plugdev"
+gpasswd -a "$SUDO_USER" plugdev
 
 echo "==> Writing $BIN"
 cat > "$BIN" <<'PY'
@@ -152,3 +173,15 @@ echo "Check that the proxy device exists:"
 echo "  grep -A4 'Tartarus Pro Proxy' /proc/bus/input/devices"
 echo "Then open input-remapper, select 'Tartarus Pro Proxy', and re-record your mappings."
 echo "Turn off autoload for any old 'Razer Razer Tartarus Pro' preset."
+echo
+cat <<'EOF'
+Lighting (OpenRazer + Polychromatic):
+  Log out/in (or reboot) for the plugdev group change to apply, then launch
+  Polychromatic once to let it detect the Tartarus Pro and build/save lighting
+  profiles there. polychromatic-cli is deprecated upstream but still works for
+  a one-shot autostart script, e.g.:
+    polychromatic-cli -o brightness -p 60
+    polychromatic-cli -o static -c 00A2FF
+  OpenRazer does not do button remapping; that's what the proxy + input-remapper
+  are for.
+EOF

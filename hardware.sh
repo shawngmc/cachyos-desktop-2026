@@ -5,11 +5,11 @@
 # Driver / support-software installer for Shawn's desktop on CachyOS.
 # Covers: MSI X870E Tomahawk WIFI, Ryzen 7 9800X3D, RX 7900 XT, Corsair
 # HX1000i, Lian-Li GA II Lite 240, Samsung 990 Pro / WD SN850X, plus
-# peripherals (Stream Deck Plus, Keychron C3 Pro 8K, Razer Tartarus Pro,
-# DualSense, Elgato 4K X, Canon MF642Cdw, ASUS BD-RW) and OS-wide input
-# remapping for the Tartarus Pro via Input Remapper. The SteelSeries
-# Aerox 9 (rivalcfg settings, grid proxy, battery alerts) is set up by
-# aerox-9-setup.sh.
+# peripherals (Stream Deck Plus, Keychron C3 Pro 8K, DualSense, Elgato
+# 4K X, Canon MF642Cdw, ASUS BD-RW) and OS-wide input remapping via Input
+# Remapper. The Razer Tartarus Pro (OpenRazer, Polychromatic, proxy) and
+# SteelSeries Aerox 9 (rivalcfg settings, grid proxy, battery alerts) are
+# set up by tartarus-pro-setup.sh and aerox-9-setup.sh.
 #
 # Review before running. Designed to be run section-by-section rather
 # than blindly executed — comment out anything you don't want.
@@ -75,53 +75,13 @@ sudo systemctl enable --now lactd.service
 # ArchWiki CoreCtrl page for the polkit rule to avoid that.
 
 # ---------------------------------------------------------------------
-# 3. AUR packages — Razer (Tartarus Pro)
-# ---------------------------------------------------------------------
-
-$AUR_HELPER -S --needed --noconfirm \
-  openrazer-meta \
-  polychromatic
-
-# openrazer requires your user in the 'plugdev' group + a re-login
-sudo gpasswd -a "$USER" plugdev
-echo ">>> Log out/in (or reboot) for the plugdev group change to apply."
-
-# ---------------------------------------------------------------------
-# 3.1 OpenRazer lighting profiles — Tartarus Pro (Polychromatic)
-# ---------------------------------------------------------------------
-#
-# Polychromatic's GUI is the primary way to build/save lighting profiles
-# and is what's recommended day-to-day. It also ships polychromatic-cli
-# for scripting, though upstream has marked the CLI deprecated (still
-# functional, just not guaranteed long-term) — fine for a one-shot
-# startup script, less ideal to build new automation around going
-# forward. Examples below run after the openrazer daemon is up and the
-# devices are recognized (reboot/re-login after step 3 first).
-
-cat <<'EOF'
->>> OpenRazer + Polychromatic installed.
-    Launch the GUI once first to let it detect the Tartarus Pro,
-    then build/save lighting profiles there.
-
-    Optional scripted examples (polychromatic-cli, deprecated but
-    functional) to set a static color + brightness on all Razer
-    devices at login — add to an autostart script if wanted:
-      polychromatic-cli -o brightness -p 60
-      polychromatic-cli -o static -c 00A2FF
-
-    Note: OpenRazer intentionally does NOT handle button remapping —
-    upstream explicitly points users to Input Remapper (section 5
-    below) for mapping the Tartarus Pro's keys to actions/macros.
-EOF
-
-# ---------------------------------------------------------------------
-# 4. AUR packages — Stream Deck Plus
+# 3. AUR packages — Stream Deck Plus
 # ---------------------------------------------------------------------
 
 $AUR_HELPER -S --needed --noconfirm streamcontroller
 
 # ---------------------------------------------------------------------
-# 5. OS-wide input remapping — Input Remapper (Tartarus Pro)
+# 4. OS-wide input remapping — Input Remapper (Tartarus Pro, Aerox 9)
 # ---------------------------------------------------------------------
 #
 # input-remapper runs as a systemd service (root-level daemon reading
@@ -137,11 +97,11 @@ sudo systemctl enable --now input-remapper.service
 cat <<'EOF'
 >>> Input Remapper installed.
     Launch the GUI with: input-remapper-gtk
+    Run tartarus-pro-setup.sh and aerox-9-setup.sh first; they create
+    the "Tartarus Pro Proxy" and "Aerox9 Grid Proxy" devices.
     Steps for each device:
-      1. Select the Razer Tartarus Pro from the device dropdown — it
-         will likely show up as multiple sub-devices (keyboard + mouse
-         HID interfaces); pick the one that reports the extra button
-         events (use `sudo evtest` to identify it if unsure).
+      1. Select the proxy device from the device dropdown (not the
+         real Razer/SteelSeries device, which the proxy grabs).
       2. Create a new preset, map each physical button/key to the
          target key/macro.
       3. Enable "autoload" for that device so the preset applies on
@@ -152,7 +112,7 @@ cat <<'EOF'
 EOF
 
 # ---------------------------------------------------------------------
-# 6. Elgato Stream Deck / capture card udev rules
+# 5. Elgato Stream Deck / capture card udev rules
 # ---------------------------------------------------------------------
 
 sudo tee /etc/udev/rules.d/70-streamdeck.rules >/dev/null <<'EOF'
@@ -165,7 +125,7 @@ sudo udevadm control --reload-rules
 sudo udevadm trigger
 
 # ---------------------------------------------------------------------
-# 7. Elgato 4K X capture card (community CLI, build from source)
+# 6. Elgato 4K X capture card (community CLI, build from source)
 # ---------------------------------------------------------------------
 
 cat <<'EOF'
@@ -187,7 +147,7 @@ cat <<'EOF'
 EOF
 
 # ---------------------------------------------------------------------
-# 8. Sound BlasterX G6 (community CLI, pip install)
+# 7. Sound BlasterX G6 (community CLI, pip install)
 # ---------------------------------------------------------------------
 
 cat <<'EOF'
@@ -200,7 +160,7 @@ cat <<'EOF'
 EOF
 
 # ---------------------------------------------------------------------
-# 9. Canon imageCLASS MF642Cdw (official Linux driver, manual download)
+# 8. Canon imageCLASS MF642Cdw (official Linux driver, manual download)
 # ---------------------------------------------------------------------
 
 cat <<'EOF'
@@ -219,4 +179,4 @@ cat <<'EOF'
 EOF
 
 echo ""
-echo "=== Done. Reboot recommended before testing OpenRazer/plugdev/input-remapper. ==="
+echo "=== Done. Reboot recommended before testing input-remapper. ==="
