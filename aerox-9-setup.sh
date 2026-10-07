@@ -6,7 +6,8 @@
 # with its own name/hash and can grab it.
 #
 # Also installs rivalcfg (battery level, sleep timer, etc.) globally via pipx,
-# along with its udev rules so it works without root.
+# along with its udev rules so it works without root, and a user timer that
+# sends a desktop notification when the mouse battery runs low.
 #
 # Usage:
 #   ./aerox9-proxy-setup.sh              install, and disable the old hwdb remap
@@ -25,6 +26,17 @@ HWDB_OFF="${HWDB}.disabled"
 PM_RULE="/etc/udev/rules.d/72-aerox9-no-autosuspend.rules"
 RIVAL_RULE="/etc/udev/rules.d/99-steelseries-rival.rules"
 SLEEP_TIMER=0   # minutes idle before the mouse sleeps (0-20, 0 = never)
+BATTERY_WARN=30 # notify when the battery drops below this percentage
+BATTERY_REMIND=30 # minutes between repeat notifications while still low
+BATT_BIN="/usr/local/bin/aerox9-battery-check"
+BATT_UNIT="/etc/systemd/user/aerox9-battery.service"
+BATT_TIMER="/etc/systemd/user/aerox9-battery.timer"
+
+# run systemctl --user against the invoking user's session, if they have one
+user_systemctl() {
+    [[ -n "${SUDO_USER:-}" ]] || return 0
+    systemctl --user --machine="${SUDO_USER}@" "$@" || true
+}
 
 reload_usb_pm() {
     udevadm control --reload-rules
@@ -41,6 +53,10 @@ if [[ "${1:-}" == "--uninstall" ]]; then
     systemctl disable --now aerox9-proxy.service 2>/dev/null || true
     rm -f "$UNIT" "$BIN"
     systemctl daemon-reload
+    user_systemctl disable --now aerox9-battery.timer
+    systemctl --global disable aerox9-battery.timer 2>/dev/null || true
+    rm -f "$BATT_TIMER" "$BATT_UNIT" "$BATT_BIN"
+    user_systemctl daemon-reload
     if pipx list --global --short 2>/dev/null | grep -q '^rivalcfg '; then
         pipx uninstall --global rivalcfg
         rm -f "$RIVAL_RULE"
@@ -83,6 +99,54 @@ echo "==> Setting mouse sleep timer to $SLEEP_TIMER min (0 = disabled)"
 udevadm settle
 /usr/local/bin/rivalcfg --sleep-timer "$SLEEP_TIMER" \
     || echo "    Mouse not reachable (off or asleep?); rerun: rivalcfg --sleep-timer $SLEEP_TIMER"
+
+echo "==> Writing $BATT_BIN"
+cat > "$BATT_BIN" <<'SH'
+#!/usr/bin/env bash
+# Notify when the Aerox 9 battery drops below $1 percent (default 30), and again
+# every $2 minutes (default 30) while it stays low. The flag file's mtime is
+# when we last notified; it is cleared once the mouse is charging or back above
+# the threshold.
+threshold=${1:-30}
+remind=${2:-30}
+state="${XDG_RUNTIME_DIR:-/tmp}/aerox9-battery-low"
+out=$(/usr/local/bin/rivalcfg --battery-level 2>/dev/null) || exit 0
+[[ $out =~ ([0-9]+)\ % ]] || exit 0   # mouse off or asleep
+level=${BASH_REMATCH[1]}
+if [[ $out == Charging* || $level -ge $threshold ]]; then
+    rm -f "$state"
+elif [[ ! -e $state ]]; then
+    notify-send --urgency=critical --app-name="Aerox 9" --icon=input-mouse \
+        "Aerox 9 battery low" "${level}% remaining"
+    touch "$state"
+elif (( $(date +%s) - $(stat -c %Y "$state") >= remind * 60 )); then
+    notify-send --urgency=critical --app-name="Aerox 9" --icon=input-mouse \
+        "Aerox 9 battery still low" "${level}% remaining"
+    touch "$state"
+fi
+SH
+chmod 755 "$BATT_BIN"
+
+echo "==> Writing $BATT_UNIT and $BATT_TIMER"
+cat > "$BATT_UNIT" <<UNIT
+[Unit]
+Description=Aerox 9 low battery check
+
+[Service]
+Type=oneshot
+ExecStart=$BATT_BIN $BATTERY_WARN $BATTERY_REMIND
+UNIT
+cat > "$BATT_TIMER" <<'UNIT'
+[Unit]
+Description=Check Aerox 9 battery every 5 minutes
+
+[Timer]
+OnStartupSec=1min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+UNIT
 
 echo "==> Writing $BIN"
 cat > "$BIN" <<'PY'
@@ -207,6 +271,11 @@ systemctl daemon-reload
 systemctl enable --now aerox9-proxy.service
 systemctl restart aerox9-proxy.service
 
+echo "==> Enabling battery timer (all users, and now for ${SUDO_USER:-nobody})"
+systemctl --global enable aerox9-battery.timer
+user_systemctl daemon-reload
+user_systemctl restart aerox9-battery.timer
+
 if systemctl list-unit-files input-remapper.service &>/dev/null; then
     echo "==> Restarting input-remapper"
     systemctl restart input-remapper.service || true
@@ -220,6 +289,8 @@ echo "Check autosuspend is off (expect 'on'):"
 echo "  grep -l 1038 /sys/bus/usb/devices/*/idVendor | xargs -n1 dirname | xargs -I{} cat {}/power/control"
 echo "Check rivalcfg can reach the mouse:"
 echo "  rivalcfg --battery-level"
+echo "Test the low-battery notification (fires if below 101%):"
+echo "  rm -f \$XDG_RUNTIME_DIR/aerox9-battery-low; $BATT_BIN 101"
 echo "Check that the proxy device exists:"
 echo "  grep -A4 'Aerox9 Grid Proxy' /proc/bus/input/devices"
 echo "Then open input-remapper, select 'Aerox9 Grid Proxy', and re-record your mappings."
