@@ -110,27 +110,57 @@ EOF
 # This assumes you already have a RomM server running somewhere on
 # your network — this script only sets up the client side.
 
+# Installed through Gear Lever (desktop-software.sh), which puts it in
+# ~/AppImages with a menu entry. Re-running replaces the integrated copy
+# with the latest release. Gear Lever's non-interactive --integrate never
+# overwrites (it would add a second, version-suffixed copy), so any
+# existing RomMix is removed first.
+
 sudo pacman -S --needed --noconfirm fuse2 flatpak
 
-ROMMIX_DIR="$HOME/.local/bin"
-mkdir -p "$ROMMIX_DIR"
+GEARLEVER="it.mijorus.gearlever"
+gearlever() { flatpak run "$GEARLEVER" "$@"; }
+
+# Paths of integrated AppImages whose name (ignoring case/spaces) starts with $1
+gearlever_paths() {
+  gearlever --list-installed --json 2>/dev/null | python3 -c '
+import json, sys
+for app in json.load(sys.stdin)["installed"]:
+    if app["name"].lower().replace(" ", "").startswith(sys.argv[1]):
+        print(app["path"])' "$1"
+}
 
 ROMMIX_URL="$(curl -fsSL https://api.github.com/repos/leclercb/rommix/releases/latest \
-  | grep -oP '"browser_download_url":\s*"\K[^"]*RomMix-x86_64\.AppImage')"
+  | grep -oP '"browser_download_url":\s*"\K[^"]*RomMix-x86_64\.AppImage' || true)"
 
-if [[ -n "$ROMMIX_URL" ]]; then
-  curl -fsSL "$ROMMIX_URL" -o "$ROMMIX_DIR/RomMix-x86_64.AppImage"
-  chmod +x "$ROMMIX_DIR/RomMix-x86_64.AppImage"
-  echo "RomMix installed to $ROMMIX_DIR/RomMix-x86_64.AppImage"
-else
+if ! flatpak info "$GEARLEVER" >/dev/null 2>&1; then
+  echo "Gear Lever isn't installed — run desktop-software.sh first, then" >&2
+  echo "re-run this section. Skipping RomMix." >&2
+elif [[ -z "$ROMMIX_URL" ]]; then
   echo "Could not resolve latest RomMix AppImage URL — grab it manually from" >&2
   echo "https://github.com/leclercb/rommix/releases" >&2
-fi
+else
+  # under $HOME rather than /tmp, so the Gear Lever flatpak can read it
+  ROMMIX_DL="$HOME/.cache/rommix/RomMix-x86_64.AppImage"
+  mkdir -p "${ROMMIX_DL%/*}"
+  curl -fsSL "$ROMMIX_URL" -o "$ROMMIX_DL"
+  chmod +x "$ROMMIX_DL"
 
-cat <<'EOF'
->>> RomMix installed.
-    1. Run ~/.local/bin/RomMix-x86_64.AppImage. On first launch, enter
-       your RomM server address and authenticate (device pairing, an
+  while IFS= read -r old; do
+    gearlever --remove "$old" --delete -y
+  done < <(gearlever_paths rommix)
+  gearlever --integrate "$ROMMIX_DL" -y
+  rm -f "$ROMMIX_DL"
+
+  # Pre-Gear Lever installs dropped it here; RomMix's settings live
+  # elsewhere, so only the binary goes.
+  rm -f "$HOME/.local/bin/RomMix-x86_64.AppImage"
+
+  ROMMIX_PATH="$(gearlever_paths rommix | head -n 1)"
+  cat <<EOF
+>>> RomMix installed to ${ROMMIX_PATH:-~/AppImages}.
+    1. Launch RomMix from the app menu. On first launch, enter your
+       RomM server address and authenticate (device pairing, an
        rmm_... API token from RomM's Administration > Client tokens,
        or username/password).
     2. On the Emulators screen, install at least one of
@@ -140,10 +170,14 @@ cat <<'EOF'
        the first installed emulator becomes the default for anything
        unassigned.
     4. To add it as a Steam entry instead: grab rommix-steam.sh from
-       the same release, put it next to the AppImage, and add that
-       script (not the AppImage) as a non-Steam game — Steam's
-       sandboxing prevents the AppImage mounting itself directly.
+       the same release and add that script (not the AppImage) as a
+       non-Steam game with the launch option
+         --appimage=${ROMMIX_PATH:-<path from Gear Lever>}
+       Steam's sandboxing prevents the AppImage mounting itself
+       directly, and the script only finds RomMix-*.AppImage files
+       beside it on its own, which Gear Lever's rename breaks.
 EOF
+fi
 
 # ---------------------------------------------------------------------
 # 6. GeForce NOW (NVIDIA's official native Linux client)

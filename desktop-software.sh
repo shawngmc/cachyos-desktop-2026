@@ -5,7 +5,8 @@
 # Desktop app installer for Shawn's desktop on CachyOS. Covers: Discord,
 # Google Chrome, Firefox, VSCode, Tabby (terminal), Bitwarden desktop,
 # Warehouse + Flatseal (Flatpak manager and permissions editor), Tor
-# Browser, Ungoogled Chromium, and LocalSend.
+# Browser, Ungoogled Chromium, LocalSend, and Gear Lever (AppImage
+# manager).
 #
 # Review before running. Designed to be run section-by-section rather
 # than blindly executed — comment out anything you don't want.
@@ -82,10 +83,15 @@ $AUR_HELPER -S --needed --noconfirm bitwarden
 # Distributed as a Flatpak itself. gaming-software.sh also installs
 # flatpak (for RomMix's emulator downloads) — this is safe to run
 # whether or not that script has run yet.
+#
+# Flatpak calls here say --system explicitly: once a per-user flathub
+# remote also exists (e.g. after the GeForce NOW installer in
+# gaming-software.sh), an unscoped install refuses to pick one in
+# non-interactive mode.
 
 sudo pacman -S --needed --noconfirm flatpak
-flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-flatpak install -y --noninteractive flathub io.github.flattool.Warehouse
+flatpak remote-add --system --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install --system -y --noninteractive flathub io.github.flattool.Warehouse
 
 # ---------------------------------------------------------------------
 # 7a. Flatseal (Flatpak permissions manager)
@@ -93,7 +99,7 @@ flatpak install -y --noninteractive flathub io.github.flattool.Warehouse
 #
 # Also a Flatpak itself — pairs with Warehouse above.
 
-flatpak install -y --noninteractive flathub com.github.tchx84.Flatseal
+flatpak install --system -y --noninteractive flathub com.github.tchx84.Flatseal
 
 # ---------------------------------------------------------------------
 # 8. Tor Browser
@@ -127,6 +133,20 @@ sudo pacman -S --needed --noconfirm localsend
 if command -v ufw >/dev/null 2>&1 && sudo ufw status | grep -q "^Status: active"; then
   sudo ufw allow 53317 comment 'LocalSend'
 fi
+
+# ---------------------------------------------------------------------
+# 11. Gear Lever (AppImage manager)
+# ---------------------------------------------------------------------
+#
+# Integrates AppImages into the app menu (moves them to ~/AppImages,
+# writes .desktop files and icons) and handles updates/removal. Flathub
+# is upstream's own distribution; the AUR gearlever package also exists.
+# gaming-software.sh (RomMix) and devices/creality-k2-setup.sh (Creality
+# Print) use its CLI to integrate their AppImages, so run this first.
+# fuse2 is what most AppImages need to mount themselves.
+
+sudo pacman -S --needed --noconfirm fuse2
+flatpak install --system -y --noninteractive flathub it.mijorus.gearlever
 
 echo ""
 echo "=== Done. ==="

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# desktop-cachyos-setup.sh
+# hardware.sh
 #
 # Driver / support-software installer for Shawn's desktop on CachyOS.
 # Covers: MSI X870E Tomahawk WIFI, Ryzen 7 9800X3D, RX 7900 XT, Corsair
@@ -12,7 +12,7 @@
 # Review before running. Designed to be run section-by-section rather
 # than blindly executed — comment out anything you don't want.
 #
-# Usage: chmod +x desktop-cachyos-setup.sh && ./desktop-cachyos-setup.sh
+# Usage: chmod +x hardware.sh && ./hardware.sh
 
 set -euo pipefail
 
@@ -55,8 +55,12 @@ sudo pacman -S --needed --noconfirm \
   cups-pdf \
   system-config-printer
 
-# lm_sensors first-time config (safe to skip/re-run; answers mostly YES)
-sudo sensors-detect --auto || true
+# lm_sensors first-time config. Only on the first run: re-running walks
+# every I2C bus again and rewrites /etc/conf.d/lm_sensors. Delete that
+# file to force a fresh detect (e.g. after a hardware change).
+if [[ ! -f /etc/conf.d/lm_sensors ]]; then
+  sudo sensors-detect --auto || true
+fi
 
 # ---------------------------------------------------------------------
 # 2. AUR packages — GPU / RGB / cooling
@@ -83,9 +87,28 @@ sudo systemctl enable --now lactd.service
 # under both X11 and Wayland since it operates below the display server.
 # The -bin AUR package has occasionally lagged behind current Python
 # versions; -git tends to be the more reliable pick.
+#
+# --needed can't skip a -git package: it only compares against the
+# version in the AUR's PKGBUILD, which lags the real git version, so
+# every run would rebuild it (and look like a downgrade). Install it
+# once here; `$AUR_HELPER -Syu --devel` keeps it current afterwards.
 
-$AUR_HELPER -S --needed --noconfirm input-remapper-git
+if ! pacman -Q input-remapper-git >/dev/null 2>&1; then
+  $AUR_HELPER -S --noconfirm input-remapper-git
+fi
 
+# If the systemd service isn't running, input-remapper-gtk starts its own
+# root daemon (via pkexec) that holds the service's D-Bus name, and the
+# unit then fails with "Is the service already running?". Clear those
+# strays so systemd owns the daemon. pkill doesn't wait, and they hold
+# the name until they've finished shutting down, so wait up to 10s.
+if ! systemctl is-active --quiet input-remapper.service; then
+  sudo pkill -f '/input-remapper-service( |$)' || true
+  for _ in {1..20}; do
+    pgrep -f '/input-remapper-service( |$)' >/dev/null || break
+    sleep 0.5
+  done
+fi
 sudo systemctl enable --now input-remapper.service
 
 cat <<'EOF'
