@@ -5,8 +5,8 @@
 # Gaming stack installer for Shawn's desktop on CachyOS. Covers: Steam,
 # Battle.net (via Lutris) + World of Warcraft, WowUp for CurseForge addon
 # management, Heroic Games Launcher (Epic/GOG/Amazon), RomMix as an
-# emulation frontend backed by a RomM server, and perf/streaming tooling
-# (ProtonUp-Qt, MangoHud + Goverlay, Sunshine).
+# emulation frontend backed by a RomM server, GeForce NOW cloud gaming,
+# and perf/streaming tooling (ProtonUp-Qt, MangoHud + Goverlay, Sunshine).
 #
 # Review before running. Designed to be run section-by-section rather
 # than blindly executed — comment out anything you don't want.
@@ -146,7 +146,39 @@ cat <<'EOF'
 EOF
 
 # ---------------------------------------------------------------------
-# 6. Performance / streaming tooling
+# 6. GeForce NOW (NVIDIA's official native Linux client)
+# ---------------------------------------------------------------------
+#
+# NVIDIA ships GeForce NOW for Linux as a Flatpak, but not via Flathub —
+# their GeForceNOWSetup.bin installer adds a per-user "GeForceNOW"
+# flatpak remote and installs com.nvidia.geforcenow from it. Updates
+# then come through the normal `flatpak update`. Officially supported
+# on Ubuntu 24.04+, but works fine elsewhere since it's a Flatpak.
+# (AUR has unofficial Electron wrappers like geforcenow-electron-bin;
+# the official client is preferred for higher res/fps support.)
+
+sudo pacman -S --needed --noconfirm flatpak
+
+if flatpak info --user com.nvidia.geforcenow >/dev/null 2>&1; then
+  echo "GeForce NOW already installed — skipping."
+else
+  GFN_TMP="$(mktemp -d)"
+  curl -fsSL https://international.download.nvidia.com/GFNLinux/GeForceNOWSetup.bin \
+    -o "$GFN_TMP/GeForceNOWSetup.bin"
+  chmod +x "$GFN_TMP/GeForceNOWSetup.bin"
+  "$GFN_TMP/GeForceNOWSetup.bin" || \
+    echo "GeForce NOW installer exited non-zero — rerun manually from https://www.nvidia.com/en-us/geforce-now/download/" >&2
+  rm -rf "$GFN_TMP"
+fi
+
+cat <<'EOF'
+>>> GeForce NOW installed. Launch it from the app menu (or
+    `flatpak run com.nvidia.geforcenow`) and sign in with your NVIDIA
+    account, then link Steam/Epic/Ubisoft/etc. libraries from Settings.
+EOF
+
+# ---------------------------------------------------------------------
+# 7. Performance / streaming tooling
 # ---------------------------------------------------------------------
 #
 # ProtonUp-Qt manages GE-Proton/Wine-GE builds for Steam and Lutris.
